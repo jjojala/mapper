@@ -46,13 +46,15 @@
 
 namespace {
 
-static QChar special_chars[9] = {
+static QChar special_chars[] = {
     QLatin1Char('"'),
     QLatin1Char(' '),
     QLatin1Char('\t'),
     QLatin1Char('('),
     QLatin1Char(')'),
     QLatin1Char('='),
+    QLatin1Char('<'),
+    QLatin1Char('>'),
     QLatin1Char('!'),
     QLatin1Char('~'),
     QLatin1Char('\\')
