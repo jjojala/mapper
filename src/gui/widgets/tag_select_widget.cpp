@@ -159,7 +159,8 @@ void TagSelectWidget::addRowItems(int row)
 	setItem(row, 3, item);
 
 	auto* compare_op = new QComboBox();
-	for (auto op : { ObjectQuery::OperatorIs, ObjectQuery::OperatorIsNot, ObjectQuery::OperatorContains })
+    for (auto op : { ObjectQuery::OperatorIs, ObjectQuery::OperatorIsNot, ObjectQuery::OperatorContains,
+                    ObjectQuery::OperatorLessThan, ObjectQuery::OperatorGreaterThan })
 		compare_op->addItem(ObjectQuery::labelFor(op), QVariant::fromValue(op));
 	setCellWidget(row, 2, compare_op);
 

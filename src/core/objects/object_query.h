@@ -64,6 +64,8 @@ public:
 		OperatorContains = 18, ///< Tests an existing tag for containing the given value (case-sensitive)
 		OperatorSearch   = 19, ///< Tests if the symbol name, a tag key or a tag value contains the given value (case-insensitive)
 		OperatorObjectText = 20, ///< Text object content (case-insensitive)
+        OperatorLessThan = 21, ///< Tests an existing tag for less-than with the given value (numeric comparison, like in `sort -n`)
+        OperatorGreaterThan = 22, ///< Tests an existing tag for greater-than with the given value (numeric comparison like in `sort -n`)
 		
 		// More operators, 32 ..
 		OperatorSymbol   = 32, ///< Test the symbol for equality.

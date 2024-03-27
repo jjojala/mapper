@@ -368,6 +368,12 @@ void ObjectQueryTest::testToString()
 	                ObjectQuery::OperatorAnd,
 	                {ObjectQuery::OperatorSearch, QStringLiteral("3")});
 	QCOMPARE(q.toString(), QStringLiteral("NOT NOT \"1\" AND \"3\""));
+
+    q = ObjectQuery(QStringLiteral("ELEVATION"), ObjectQuery::OperatorLessThan, QStringLiteral("1"));
+    QCOMPARE(q.toString(), QStringLiteral("ELEVATION < \"1\""));
+
+    q = ObjectQuery(QStringLiteral("ELEVATION"), ObjectQuery::OperatorGreaterThan, QStringLiteral("1"));
+    QCOMPARE(q.toString(), QStringLiteral("ELEVATION > \"1\""));
 }
 
 
@@ -493,7 +499,17 @@ void ObjectQueryTest::testParser()
 	QCOMPARE(p.parse(QStringLiteral("A = \"\\\"1\\\"\"")), q);	// A = "\"1\""
 	q = ObjectQuery(QStringLiteral("A"), ObjectQuery::OperatorIs, QStringLiteral("\"\\1\""));	// "\1"
 	QCOMPARE(p.parse(QStringLiteral("A = \"\\\"\\\\1\\\"\"")), q);	// A = "\"\\1\""
-	
+
+    q = ObjectQuery(QStringLiteral("A"), ObjectQuery::OperatorLessThan, QStringLiteral("\"1\""));	// "1"
+    QCOMPARE(p.parse(QStringLiteral("A < \"\\\"1\\\"\"")), q);	// A < "\"1\""
+    q = ObjectQuery(QStringLiteral("A"), ObjectQuery::OperatorLessThan, QStringLiteral("\"\\1\""));	// "\1"
+    QCOMPARE(p.parse(QStringLiteral("A < \"\\\"\\\\1\\\"\"")), q);	// A < "\"\\1\""
+
+    q = ObjectQuery(QStringLiteral("A"), ObjectQuery::OperatorGreaterThan, QStringLiteral("\"1\""));	// "1"
+    QCOMPARE(p.parse(QStringLiteral("A > \"\\\"1\\\"\"")), q);	// A > "\"1\""
+    q = ObjectQuery(QStringLiteral("A"), ObjectQuery::OperatorGreaterThan, QStringLiteral("\"\\1\""));	// "\1"
+    QCOMPARE(p.parse(QStringLiteral("A > \"\\\"\\\\1\\\"\"")), q);	// A > "\"\\1\""
+
 	Map m;
 	auto* symbol_1 = new PointSymbol();
 	symbol_1->setNumberComponent(0, 123);

@@ -98,6 +98,21 @@ QString keyToString(const QString &key)
 		return QLatin1Char('"') + toEscaped(key) + QLatin1Char('"');
 }
 
+int numericCompare(const QString &a, const QString &b)
+{
+    bool aOk { false };
+    float aVal = a.toDouble(&aOk);
+    if (aOk) { // converting a to double ok
+        bool bOk { false };
+        float bVal = b.toDouble(&bOk);
+        if (bOk) {// converting b to double ok
+            return aVal > bVal ? 1 : aVal < bVal ? -1 : 0; // numeric comparison
+        }
+    }
+
+    // converting a or both to double failed -> compare alphanumerically
+    return a.compare(b);
+}
 
 /**
  * A stack for tracking object query parsing state.
@@ -267,8 +282,8 @@ ObjectQuery::ObjectQuery(const QString& key, ObjectQuery::Operator op, const QSt
 	// Can't have an empty key (but can have empty value)
 	// Must be a key/value operator
 	Q_ASSERT(op >= 16);
-	Q_ASSERT(op <= 18);
-	if (op < 16 || op > 18
+    Q_ASSERT(op <= 22);
+    if (op < 16 || op > 22
 	    || key.length() == 0)
 	{
 		reset();
@@ -283,8 +298,8 @@ ObjectQuery::ObjectQuery(ObjectQuery::Operator op, const QString& value)
 	// Can't have an empty key (but can have empty value)
 	// Must be a key/value operator
 	Q_ASSERT(op >= 19);
-	Q_ASSERT(op <= 20);
-	if (op < 19 || op > 20
+    Q_ASSERT(op <= 22);
+    if (op < 19 || op > 22
 	    || value.length() == 0)
 	{
 		reset();
@@ -370,6 +385,12 @@ QString ObjectQuery::labelFor(ObjectQuery::Operator op)
 	case OperatorObjectText:
 		//: Very short label
 		return tr("Text");
+    case OperatorLessThan:
+        //: Very short label
+        return tr("is less than");
+    case OperatorGreaterThan:
+        //: Very short label
+        return tr("is greater than");
 		
 	case OperatorAnd:
 		//: Very short label
@@ -429,7 +450,18 @@ bool ObjectQuery::operator()(const Object* object) const
 		if (object->getType() == Object::Text)
 		    return static_cast<const TextObject*>(object)->getText().contains(tags.value, Qt::CaseInsensitive);
 		return false;
-		
+
+    case OperatorLessThan:
+        return [](auto const& container,  auto const& tags) {
+            auto const it = container.find(tags.key);
+            return it != container.end() && numericCompare(it->value, tags.value) < 0;
+        } (object->tags(), tags);
+    case OperatorGreaterThan:
+        return [](auto const& container,  auto const& tags) {
+            auto const it = container.find(tags.key);
+            return it != container.end() && numericCompare(it->value, tags.value) > 0;
+        } (object->tags(), tags);
+
 	case OperatorAnd:
 		return (*subqueries.first)(object) && (*subqueries.second)(object);
 	case OperatorOr:
@@ -468,14 +500,14 @@ const ObjectQuery::LogicalOperands* ObjectQuery::logicalOperands() const
 const ObjectQuery::StringOperands* ObjectQuery::tagOperands() const
 {
 	const StringOperands* result = nullptr;
-	if (op >= 16 && op <= 20)
+    if (op >= 16 && op <= 22)
 	{
 		result = &tags;
 	}
 	else
 	{
 		Q_ASSERT(op >= 16);
-		Q_ASSERT(op <= 20);
+        Q_ASSERT(op <= 22);
 	}
 	return result;
 }
@@ -515,6 +547,12 @@ QString ObjectQuery::toString() const
 	case OperatorObjectText:
 		ret = QLatin1Char('"') + toEscaped(tags.value) + QLatin1Char('"');
 		break;
+    case OperatorLessThan:
+        ret = keyToString(tags.key) + QLatin1String(" < \"") + toEscaped(tags.value) + QLatin1Char('"');
+        break;
+    case OperatorGreaterThan:
+        ret = keyToString(tags.key) + QLatin1String(" > \"") + toEscaped(tags.value) + QLatin1Char('"');
+        break;
 		
 	case OperatorAnd:
 		if (subqueries.first->getOperator() == OperatorOr)
@@ -579,7 +617,7 @@ void ObjectQuery::consume(ObjectQuery&& other)
 	{
 		; // nothing else
 	}
-	else if (op < 16)
+    else if (op < 16)
 	{
 		new (&subqueries) ObjectQuery::LogicalOperands(std::move(other.subqueries));
 		other.subqueries.~LogicalOperands();
@@ -615,6 +653,8 @@ bool operator==(const ObjectQuery& lhs, const ObjectQuery& rhs)
 	case ObjectQuery::OperatorContains:
 	case ObjectQuery::OperatorSearch:
 	case ObjectQuery::OperatorObjectText:
+    case ObjectQuery::OperatorLessThan:
+    case ObjectQuery::OperatorGreaterThan:
 		return lhs.tags == rhs.tags;
 		
 	case ObjectQuery::OperatorAnd:
@@ -684,6 +724,12 @@ ObjectQuery ObjectQueryParser::parse(const QString& text)
 					case '~':
 						*current = { key, ObjectQuery::OperatorContains, value };
 						break;
+                    case '<':
+                        *current = { key, ObjectQuery::OperatorLessThan, value };
+                        break;
+                    case '>':
+                        *current = { key, ObjectQuery::OperatorGreaterThan, value };
+                        break;
 					default:
 						Q_UNREACHABLE();
 					}
@@ -854,7 +900,8 @@ void ObjectQueryParser::getToken()
 		token_text = input.mid(token_start, 1);
 		++pos;
 	}
-	else if (current == QLatin1Char('='))
+    else if (current == QLatin1Char('=') || current == QLatin1Char('<')
+               || current == QLatin1Char('>'))
 	{
 		token = TokenTextOperator;
 		token_text = input.mid(token_start, 1);
